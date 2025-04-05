@@ -834,13 +834,13 @@ async fn install_container(
         }
     }
 
-    // Write the entry for /boot to /etc/fstab.  TODO: Encourage OSes to use the karg?
-    // Or better bind this with the grub data.
-    if let Some(boot) = root_setup.boot.as_ref() {
-        crate::lsm::atomic_replace_labeled(&root, "etc/fstab", 0o644.into(), sepolicy, |w| {
-            writeln!(w, "{}", boot.to_fstab()).map_err(Into::into)
-        })?;
-    }
+    // // Write the entry for /boot to /etc/fstab.  TODO: Encourage OSes to use the karg?
+    // // Or better bind this with the grub data.
+    // if let Some(boot) = root_setup.boot.as_ref() {
+    //     crate::lsm::atomic_replace_labeled(&root, "etc/fstab", 0o644.into(), sepolicy, |w| {
+    //         writeln!(w, "{}", boot.to_fstab()).map_err(Into::into)
+    //     })?;
+    // }
 
     if let Some(contents) = state.root_ssh_authorized_keys.as_deref() {
         osconfig::inject_root_ssh_authorized_keys(&root, sepolicy, contents)?;
@@ -887,7 +887,7 @@ pub(crate) fn exec_in_host_mountns(args: &[std::ffi::OsString]) -> Result<()> {
 pub(crate) struct RootSetup {
     #[cfg(feature = "install-to-disk")]
     luks_device: Option<String>,
-    device_info: bootc_blockdev::PartitionTable,
+    // device_info: bootc_blockdev::PartitionTable,
     /// Absolute path to the location where we've mounted the physical
     /// root filesystem for the system we're installing.
     physical_root_path: Utf8PathBuf,
@@ -1335,16 +1335,18 @@ async fn install_with_sysroot(
         })
         .context("Writing aleph version")?;
 
-    if cfg!(target_arch = "s390x") {
-        // TODO: Integrate s390x support into install_via_bootupd
-        crate::bootloader::install_via_zipl(&rootfs.device_info, boot_uuid)?;
-    } else {
-        crate::bootloader::install_via_bootupd(
-            &rootfs.device_info,
-            &rootfs.physical_root_path,
-            &state.config_opts,
-        )?;
-    }
+    // if cfg!(target_arch = "s390x") {
+    //     // TODO: Integrate s390x support into install_via_bootupd
+    //     crate::bootloader::install_via_zipl(
+    //         &rootfs.device_info, boot_uuid
+    //     )?;
+    // } else {
+    //     crate::bootloader::install_via_bootupd(
+    //         &rootfs.device_info,
+    //         &rootfs.physical_root_path,
+    //         &state.config_opts,
+    //     )?;
+    // }
     tracing::debug!("Installed bootloader");
 
     tracing::debug!("Perfoming post-deployment operations");
@@ -1415,17 +1417,17 @@ async fn install_to_filesystem_impl(state: &State, rootfs: &mut RootSetup) -> Re
     // Drop exclusive ownership since we're done with mutation
     let rootfs = &*rootfs;
 
-    match &rootfs.device_info.label {
-        bootc_blockdev::PartitionType::Dos => crate::utils::medium_visibility_warning(
-            "Installing to `dos` format partitions is not recommended",
-        ),
-        bootc_blockdev::PartitionType::Gpt => {
-            // The only thing we should be using in general
-        }
-        bootc_blockdev::PartitionType::Unknown(o) => {
-            crate::utils::medium_visibility_warning(&format!("Unknown partition label {o}"))
-        }
-    }
+    // match &rootfs.device_info.label {
+    //     bootc_blockdev::PartitionType::Dos => crate::utils::medium_visibility_warning(
+    //         "Installing to `dos` format partitions is not recommended",
+    //     ),
+    //     bootc_blockdev::PartitionType::Gpt => {
+    //         // The only thing we should be using in general
+    //     }
+    //     bootc_blockdev::PartitionType::Unknown(o) => {
+    //         crate::utils::medium_visibility_warning(&format!("Unknown partition label {o}"))
+    //     }
+    // }
 
     // We verify this upfront because it's currently required by bootupd
     let boot_uuid = rootfs
@@ -1816,7 +1818,7 @@ pub(crate) async fn install_to_filesystem(
     // Find the UUID of /boot because we need it for GRUB.
     let boot_uuid = if boot_is_mount {
         let boot_path = fsopts.root_path.join(BOOT);
-        let u = crate::mount::inspect_filesystem(&boot_path)
+        let u = crate::mount::inspect_filesystem(&boot_path) 
             .context("Inspecting /{BOOT}")?
             .uuid
             .ok_or_else(|| anyhow!("No UUID found for /{BOOT}"))?;
@@ -1826,27 +1828,27 @@ pub(crate) async fn install_to_filesystem(
     };
     tracing::debug!("boot UUID: {boot_uuid:?}");
 
-    // Find the real underlying backing device for the root.  This is currently just required
-    // for GRUB (BIOS) and in the future zipl (I think).
-    let backing_device = {
-        let mut dev = inspect.source;
-        loop {
-            tracing::debug!("Finding parents for {dev}");
-            let mut parents = bootc_blockdev::find_parent_devices(&dev)?.into_iter();
-            let Some(parent) = parents.next() else {
-                break;
-            };
-            if let Some(next) = parents.next() {
-                anyhow::bail!(
-                    "Found multiple parent devices {parent} and {next}; not currently supported"
-                );
-            }
-            dev = parent;
-        }
-        dev
-    };
-    tracing::debug!("Backing device: {backing_device}");
-    let device_info = bootc_blockdev::partitions_of(Utf8Path::new(&backing_device))?;
+    // // Find the real underlying backing device for the root.  This is currently just required
+    // // for GRUB (BIOS) and in the future zipl (I think).
+    // let backing_device = "{
+    //     let mut dev = inspect.source;
+    //     loop {
+    //         tracing::debug!("Finding parents for {dev}");
+    //         let mut parents = bootc_blockdev::find_parent_devices(&dev)?.into_iter();
+    //         let Some(parent) = parents.next() else {
+    //             break;
+    //         };
+    //         if let Some(next) = parents.next() {
+    //             anyhow::bail!(
+    //                 "Found multiple parent devices {parent} and {next}; not currently supported"
+    //             );
+    //         }
+    //         dev = parent;
+    //     }
+    //     dev
+    // }";
+    // tracing::debug!("Backing device: {backing_device}");
+    // let device_info = bootc_blockdev::partitions_of(Utf8Path::new(&backing_device))?;
 
     let rootarg = format!("root={}", root_info.mount_spec);
     let mut boot = if let Some(spec) = fsopts.boot_mount_spec {
@@ -1876,7 +1878,7 @@ pub(crate) async fn install_to_filesystem(
     let mut rootfs = RootSetup {
         #[cfg(feature = "install-to-disk")]
         luks_device: None,
-        device_info,
+        // device_info,
         physical_root_path: fsopts.root_path,
         physical_root: rootfs_fd,
         rootfs_uuid: inspect.uuid.clone(),

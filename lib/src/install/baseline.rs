@@ -436,7 +436,7 @@ pub(crate) fn install_create_rootfs(
     let device_info = bootc_blockdev::partitions_of(&devpath)?;
     Ok(RootSetup {
         luks_device,
-        device_info,
+        // device_info,
         physical_root_path,
         physical_root,
         rootfs_uuid: Some(root_uuid.to_string()),
